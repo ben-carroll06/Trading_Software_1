@@ -1,0 +1,175 @@
+Overall Summary 
+price_data.py
+Retrieves stock prices and fundamental data from Yahoo Finance for a list of tickers. It also calculates indicators such as RSI and prepares the data for analysis by the trading engine.
+data_download.py
+Downloads historical stock price and dividend data using Yahoo Finance and stores it locally for reuse. This provides the historical datasets required for portfolio analysis and backtesting.
+data_retrieval.py
+Loads previously stored market datasets from local files or databases. It allows the trading engine to quickly access historical price data without repeatedly downloading it.
+price_service.py
+Calculates portfolio values, performance metrics, dividends, and cash balances based on transaction history and historical market data. It also converts values into GBP and tracks portfolio performance over time.
+universe_utils.py
+Manages the stock universe by loading tickers and company information from universe.json. It allows the system to retrieve all tickers, filter them by sector, and access information about specific stocks.
+
+For your document, you can summarise price_data.py like this:
+•	Purpose: Retrieves stock price and fundamental data for a list of securities and prepares it for analysis within the trading engine.
+•	Data Source: Uses the Yahoo Finance API (yfinance) to download historical price data and company fundamentals.
+•	Inputs:
+o	List of stock tickers (symbols)
+o	Historical price data (used for calculations like RSI)
+•	Batch Processing: Symbols are split into smaller batches using chunk_list() to improve performance and avoid API rate limits when downloading data.
+•	Technical Indicator Calculation: Calculates the Relative Strength Index (RSI) from historical closing prices to measure momentum and identify overbought or oversold conditions.
+•	Parallel Processing: Uses multithreading (ThreadPoolExecutor) to fetch company fundamentals for multiple stocks simultaneously, improving speed.
+•	Output: Returns a structured dictionary containing key market and financial metrics for each stock, including price, previous close, sector, market cap, valuation ratios, and RSI.
+•	Role in System: Acts as the data ingestion and preprocessing layer, providing cleaned and enriched market data that other components of the trading engine can use for analysis or strategy calculations.
+
+
+
+File: data_download.py
+•	Purpose: Downloads and stores historical stock price data and dividend information for a list of securities. This data is used by the trading engine for analysis and strategy calculations.
+•	Data Source: Uses the Yahoo Finance API (yfinance) to retrieve historical market data and dividend payments for each stock.
+•	Inputs:
+o	List of stock tickers
+o	Start date for historical data (set to December 2017)
+•	Data Processing:
+o	Downloads historical market data (open, high, low, close, volume).
+o	Retrieves dividend data for each stock.
+o	Removes timezone information to ensure consistent date indexing.
+o	Aligns dividend data with market data dates.
+o	Combines price and dividend data into a single dataset for each ticker.
+•	Error Handling:
+o	Includes retry logic to attempt downloads multiple times if an error occurs.
+o	Introduces delays between requests to avoid API rate limits.
+•	Data Storage:
+o	The downloaded datasets are saved locally as a pickle file (downloaded_data.pkl) for faster loading later.
+•	Output:
+o	A dictionary where each stock ticker maps to its historical dataset containing price and dividend information.
+•	Additional Functions:
+o	load_saved_data() loads previously saved market data from the pickle file.
+o	load_saved_exchange_rates() loads stored exchange rate data used for currency conversions.
+•	Role in System:
+o	Acts as the historical market data ingestion layer, downloading and storing price and dividend data that the trading engine uses for backtesting and analysis.
+
+
+
+ 
+File: price_service.py (Portfolio Calculation Module)
+•	Purpose: Calculates portfolio values, performance metrics, dividends, and cash positions based on transaction history and historical market data.
+•	Inputs:
+o	Transaction records (buy/sell data for each stock)
+o	Historical stock price data
+o	Exchange rate data
+o	Mapping of company names to tickers
+•	Currency Handling:
+o	Supports multiple currencies (USD, GBP, EUR, CAD).
+o	Uses exchange rate data to convert all values into GBP for consistent portfolio valuation.
+•	Position Value Calculation:
+o	Calculates the current value of each position by multiplying:
+shares held × latest stock price
+o	Converts values to GBP using exchange rates when necessary.
+o	Aggregates values to compute the total portfolio value.
+•	Performance Calculations:
+Weekly Performance
+o	Calculates percentage return over the last week:
+((recent price − price one week ago) / price one week ago) × 100
+Overall Performance
+o	Calculates percentage return since the first purchase date:
+((current price − purchase price) / purchase price) × 100
+•	Dividend Calculations:
+o	Calculates total dividends earned from each stock.
+o	Adjusts dividends based on number of shares held at the dividend date.
+o	Converts dividends into GBP using exchange rates.
+•	Portfolio Time Series:
+o	Calculates daily portfolio value over time using historical stock prices.
+o	Tracks how the portfolio evolves across dates.
+•	Cash Position Tracking:
+o	Tracks available cash in the portfolio.
+o	Starts with an initial capital of £10,000.
+o	Subtracts cash used to purchase stocks.
+o	Adds dividends received.
+•	Daily Cash Position:
+o	Calculates how cash changes each day based on trades and dividends.
+•	Output:
+o	Portfolio valuation tables
+o	Performance metrics
+o	Daily portfolio values
+o	Dividend totals
+o	Cash position tracking
+•	Data Export:
+o	Combines portfolio value, cash position, and dividends into a dataset.
+o	Saves the results as an Excel file containing:
+	Full portfolio data
+	Summary performance sheet
+•	Role in System:
+o	Acts as the portfolio analytics engine, calculating performance, portfolio value, dividends, and cash flows based on trading activity and historical market data.
+
+
+File: price_service.py / Portfolio Calculation Module
+•	Purpose: Calculates portfolio values, performance metrics, dividends, and cash balances using transaction data, historical stock prices, and exchange rates.
+•	Inputs:
+o	Transaction records (buy/sell history for each stock)
+o	Historical stock price data
+o	Exchange rate data
+o	Mapping of company names to stock tickers
+•	Currency Handling:
+o	Supports multiple currencies (USD, GBP, EUR, CAD).
+o	Uses exchange rates to convert all portfolio values into GBP for consistent reporting.
+•	Position Value Calculation:
+o	Calculates the value of each position using:
+position value = shares held × latest stock price
+o	Converts the value into GBP if the stock is traded in another currency.
+o	Aggregates values to calculate the total portfolio value.
+•	Performance Calculations:
+Weekly Performance
+o	Measures price change over the past week:
+((recent price − price one week ago) / price one week ago) × 100
+Overall Performance
+o	Measures performance since the initial purchase:
+((current price − purchase price) / purchase price) × 100
+•	Dividend Calculations:
+o	Calculates dividends received from each stock.
+o	Adjusts for the number of shares held on each dividend date.
+o	Converts dividends into GBP using exchange rates.
+•	Portfolio Time Series:
+o	Calculates daily portfolio values across time using historical price data.
+o	Tracks how the value of each stock and the total portfolio change over time.
+•	Cash Position Tracking:
+o	Starts with an initial capital of £10,000.
+o	Subtracts the cost of stock purchases.
+o	Adds dividends received to determine the remaining cash balance.
+•	Daily Cash Tracking:
+o	Tracks changes in cash position for each day based on transactions and dividend payments.
+•	Data Export:
+o	Combines portfolio values, dividends, and cash positions into a dataset.
+o	Exports results to an Excel file containing:
+	Full daily portfolio data
+	Summary performance metrics.
+•	Role in System:
+o	Acts as the portfolio analytics engine, calculating portfolio valuation, performance metrics, dividends, and cash flows from trading activity and market data.
+
+
+File: universe_utils.py
+•	Purpose: Manages the stock universe, defining which securities the trading engine tracks and analyzes.
+•	Data Source: Uses a configuration file called universe.json, which contains information about stocks grouped by sector.
+•	Inputs:
+o	universe.json file containing:
+	stock tickers
+	company names
+	sector classifications
+•	Universe Loading:
+o	load_universe() loads the universe.json file into the system.
+•	Ticker Extraction:
+o	get_all_tickers() retrieves a list of all stock tickers defined in the universe.
+•	Sector Filtering:
+o	get_tickers_by_sector() returns tickers belonging to a specific sector (e.g., technology, finance).
+•	Ticker Information Retrieval:
+o	get_ticker_info() returns detailed information for a specific ticker, including:
+	ticker symbol
+	company name
+	sector
+	sector category
+•	Output:
+o	Lists of stock tickers or dictionaries containing company information.
+•	Role in System:
+o	Defines the set of securities (the trading universe) that the engine processes for data retrieval, analysis, and portfolio calculations.
+
+
