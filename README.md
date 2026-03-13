@@ -53,7 +53,53 @@ To set up the Trading Software, follow these steps:
 - [ ] Make the fx data update less tedious.
 - [ ] Clean up unused imports and de-bloat requirements.txt.
 
+## Quant Interface
 
+Purpose:
+Enable quantitative analysis through a multi-factor ranking system.
+
+Inputs:
+- Stock universe
+- Factor weights (value, momentum, quality)
+- Historical price data
+
+Outputs:
+- Factor scores for each stock
+- Ranked stock list
+- Daily top opportunities table
+- 
+## Macro Interface
+
+Purpose:
+Allow macroeconomic research and event tagging to inform portfolio analysis.
+
+Inputs:
+- Macro themes (inflation, interest rates, geopolitics)
+- Tagged research events
+
+Outputs:
+- Portfolio exposure by macro theme
+- Trend identification across events
+- Macro risk indicators
+
+## Alts Interface
+
+Purpose:
+Allow the Alternatives desk to track and evaluate investment opportunities.
+
+Inputs:
+- Deal details
+- Expected IRR
+- Ticket size
+- Risk rating
+- Pipeline stage
+
+Outputs:
+- Deal pipeline overview
+- Alternative investment summaries
+- Portfolio exposure to alternative assets
+
+- 
 ## Contributors
 
 This Project was created by Maciej Miazek (mam00961@students.stir.ac.uk), further developed by Raj Aryan Upadhyaya (upadhyra@tcd.ie)
