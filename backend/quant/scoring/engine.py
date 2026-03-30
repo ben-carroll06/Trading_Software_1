@@ -232,6 +232,8 @@ FACTOR_REGISTRY: dict[str, FactorDefinition] = {
     ),
 }
 
+PE_RATIO_ANCHOR_WEIGHT = 0.12
+
 
 def _is_valid_number(value: float | int | None) -> bool:
     if value is None:
@@ -369,10 +371,16 @@ def run_scoring_engine(
                 factor_zscores[factor_name] = zscore_maps[factor_name][idx] if zscore_maps[factor_name][idx] is not None else 0.0
 
         if total_weight > 0:
-            composite_score = sum(
+            weighted_sum = sum(
                 active_weights[factor] * float(factor_zscores.get(factor, 0.0) or 0.0)
                 for factor in active_weights
-            ) / total_weight
+            )
+
+            pe_anchor = 0.0
+            if "pe_ratio" in active_weights:
+                pe_anchor = PE_RATIO_ANCHOR_WEIGHT * float(factor_zscores.get("pe_ratio", 0.0) or 0.0)
+
+            composite_score = (weighted_sum + pe_anchor) / (total_weight + PE_RATIO_ANCHOR_WEIGHT)
         else:
             composite_score = 0.0
 
