@@ -10,7 +10,8 @@ import yfinance as yf
 import pandas as pd
 import websockets
 from fastapi import WebSocket
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("PriceService")
@@ -51,10 +52,14 @@ class PriceService:
             logger.warning("Oi! You forgot the FINNHUB_KEY. We're flying blind here mate.")
         
         self.universe_file = universe_file
-        self.symbols = self._load_symbols()
+        self.ticker_metadata = self._load_ticker_metadata()
+        self.symbols = list(self.ticker_metadata.keys())
         
         self.fundamental_cache = self._load_cache()
         self.live_prices = {}  # {symbol: price}
+        self.quant_results: dict[str, Any] = {}
+        self.quant_refresh_minutes = int(os.getenv("QUANT_FACTOR_REFRESH_MINUTES", "60"))
+        self.quant_lock = threading.Lock()
         
         self.manager = ConnectionManager()
         self.running = False
@@ -70,10 +75,37 @@ class PriceService:
         self.consecutive_failures = 0
         self.ws_connected = False
 
+    def _universe_path(self) -> str:
+        return os.path.join(os.path.dirname(__file__), self.universe_file)
+
+    def _load_ticker_metadata(self) -> dict[str, dict[str, str]]:
+        try:
+            path = self._universe_path()
+            if not os.path.exists(path):
+                return {}
+
+            with open(path, "r") as f:
+                data = json.load(f)
+
+            metadata: dict[str, dict[str, str]] = {}
+            for sector in data.get("sectors", {}).values():
+                sector_name = sector.get("name", "Unknown")
+                for stock in sector.get("stocks", []):
+                    ticker = stock.get("ticker")
+                    if not ticker:
+                        continue
+                    metadata[ticker] = {
+                        "name": stock.get("name", ticker),
+                        "sector": sector_name,
+                    }
+            return metadata
+        except Exception as e:
+            logger.error(f"Failed to load ticker metadata: {e}")
+            return {}
+
     def _load_symbols(self):
         try:
-            base = os.path.dirname(__file__)
-            path = os.path.join(base, self.universe_file)
+            path = self._universe_path()
             if not os.path.exists(path):
                 return []
             
@@ -113,6 +145,10 @@ class PriceService:
         # Start fundamentals in a background thread
         t_fund = threading.Thread(target=self._fundamental_loop, daemon=True)
         t_fund.start()
+
+        # Start quant scoring in a background thread
+        t_quant = threading.Thread(target=self._quant_scoring_loop, daemon=True)
+        t_quant.start()
         
         # Start the async websocket consumer
         asyncio.create_task(self._upstream_websocket_loop())
@@ -243,7 +279,7 @@ class PriceService:
                 # Fetch history for RSI calculation
                 history_data = yf.download(
                     self.symbols,
-                    period="1mo",
+                    period="1y",
                     interval="1d",
                     group_by="ticker",
                     threads=False,
@@ -308,12 +344,13 @@ class PriceService:
                         rsi_val = self._calculate_rsi(sym_hist, prev_close)
                         
                         # Store in cache (sanitize all numeric values for JSON safety)
+                        metadata = self.ticker_metadata.get(sym, {})
                         self.fundamental_cache[sym] = {
                             "history": sym_hist,
                             "constants": {
                                 "market_cap": self._safe_float(market_cap),
                                 "prev_close": self._safe_float(prev_close),
-                                "sector": "Unknown",
+                                "sector": metadata.get("sector", "Unknown"),
                                 "pe_ratio": self._safe_float(pe_ratio),
                                 "pb_ratio": self._safe_float(pb_ratio),
                                 "peg_ratio": self._safe_float(peg_ratio),
@@ -417,14 +454,16 @@ class PriceService:
             if prev_close and price:
                 change = price - prev_close
                 change_p = (change / prev_close) * 100
+
+            metadata = self.ticker_metadata.get(sym, {})
             
             response[sym] = {
                 "symbol": sym,
-                "name": sym,
+                "name": metadata.get("name", sym),
                 "price": price,
                 "change": round(change, 2),
                 "change_percent": round(change_p, 2),
-                "sector": constants.get("sector", "Unknown"),
+                "sector": constants.get("sector") or metadata.get("sector", "Unknown"),
                 "market_cap": self._safe_float(constants.get("market_cap")),
                 "pe_ratio": self._safe_float(constants.get("pe_ratio")),
                 "price_to_book": self._safe_float(constants.get("pb_ratio")),
@@ -449,3 +488,116 @@ class PriceService:
             }
         
         return response
+
+    def get_fundamentals(self, symbol: str) -> dict:
+        return self.get_snapshot([symbol]).get(symbol, {})
+
+    def get_price_history(self, symbol: str, period: str = "1y") -> list[float]:
+        lookbacks = {
+            "1mo": 21,
+            "3mo": 63,
+            "6mo": 126,
+            "1y": 252,
+        }
+
+        history = self.fundamental_cache.get(symbol, {}).get("history", pd.DataFrame())
+        closes: list[float] = []
+
+        if isinstance(history, pd.DataFrame) and not history.empty and "Close" in history:
+            closes = [self._safe_float(v) for v in history["Close"].tolist()]
+            closes = [v for v in closes if v is not None]
+
+        if not closes:
+            try:
+                downloaded = yf.download(
+                    symbol,
+                    period=period,
+                    interval="1d",
+                    progress=False,
+                    auto_adjust=True,
+                )
+                if isinstance(downloaded, pd.DataFrame) and not downloaded.empty and "Close" in downloaded:
+                    closes = [self._safe_float(v) for v in downloaded["Close"].tolist()]
+                    closes = [v for v in closes if v is not None]
+            except Exception as e:
+                logger.warning(f"Failed to fetch price history for {symbol}: {e}")
+
+        days = lookbacks.get(period)
+        if days and len(closes) > days:
+            return closes[-days:]
+        return closes
+
+    def _persist_quant_result(self, strategy_name: str, result: Any) -> None:
+        supabase_url = os.getenv("SUPABASE_URL")
+        service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        if not supabase_url or not service_key:
+            return
+
+        try:
+            from supabase import create_client
+            from quant.scoring.engine import ranking_result_to_dict
+
+            supabase = create_client(supabase_url, service_key)
+            payload = {
+                "run_date": datetime.now(timezone.utc).date().isoformat(),
+                "strategy": strategy_name,
+                "rankings_json": ranking_result_to_dict(result),
+            }
+            supabase.table("quant_rankings").insert(payload).execute()
+        except Exception as e:
+            logger.warning(f"Unable to persist quant rankings for {strategy_name}: {e}")
+
+    def _build_quant_inputs(self) -> tuple[list[dict], dict[str, list[float]]]:
+        symbols = list(self.symbols)
+        snapshot = self.get_snapshot(symbols)
+        universe_data = list(snapshot.values())
+        price_histories = {symbol: self.get_price_history(symbol, period="1y") for symbol in symbols}
+        return universe_data, price_histories
+
+    def refresh_quant_rankings(self, strategy: str | None = None) -> None:
+        from quant.scoring.config import STRATEGY_CONFIGS
+        from quant.scoring.engine import run_scoring_engine
+
+        universe_data, price_histories = self._build_quant_inputs()
+        strategy_names = [strategy] if strategy else list(STRATEGY_CONFIGS.keys())
+
+        for strategy_name in strategy_names:
+            if strategy_name not in STRATEGY_CONFIGS:
+                logger.warning(f"Skipping unknown quant strategy: {strategy_name}")
+                continue
+
+            logger.info(f"Running quant scoring for strategy={strategy_name}")
+            result = run_scoring_engine(
+                universe_data=universe_data,
+                price_histories=price_histories,
+                weights=STRATEGY_CONFIGS[strategy_name],
+                strategy_name=strategy_name,
+            )
+
+            with self.quant_lock:
+                self.quant_results[strategy_name] = result
+
+            self._persist_quant_result(strategy_name, result)
+            logger.info(
+                f"Quant scoring complete for strategy={strategy_name}; "
+                f"stocks_scored={len(result.ranked_stocks)}"
+            )
+
+    def _quant_scoring_loop(self) -> None:
+        """Runs quant scoring periodically using the same background-thread pattern as fundamentals."""
+        refresh_seconds = max(1, self.quant_refresh_minutes) * 60
+
+        while self.running:
+            try:
+                if not self.fundamental_cache:
+                    logger.info("Quant loop waiting for fundamentals cache to populate...")
+                    time.sleep(10)
+                    continue
+
+                logger.info("Starting scheduled quant scoring refresh...")
+                self.refresh_quant_rankings()
+                logger.info("Scheduled quant scoring refresh complete.")
+            except Exception as e:
+                logger.error(f"Quant scoring loop failed: {e}")
+
+            time.sleep(refresh_seconds)
