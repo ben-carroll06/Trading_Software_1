@@ -4,12 +4,21 @@ from fastapi.responses import JSONResponse
 from typing import List, Optional
 import logging
 import asyncio
+import os
+import sys
 from dotenv import load_dotenv
 
 load_dotenv()
 
+# Ensure backend package imports resolve when running from backend/prices.
+CURRENT_DIR = os.path.dirname(__file__)
+BACKEND_DIR = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
+
 from price_service import PriceService
 from universe_utils import load_universe
+from quant.api.routes import quant_router, set_price_service
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("MainApp")
@@ -18,13 +27,15 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=os.getenv("ALLOWED_ORIGINS", "*").split(","),
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 service = PriceService()
+set_price_service(service)
+app.include_router(quant_router, prefix="/quant", tags=["Quant"])
 
 @app.get("/health")
 def health_check():
