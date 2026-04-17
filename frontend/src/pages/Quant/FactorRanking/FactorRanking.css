@@ -1,0 +1,247 @@
+.factor-ranking-page {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  color: #ffffff;
+}
+
+.factor-ranking-header {
+  margin-bottom: 18px;
+}
+
+.factor-ranking-header h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 600;
+}
+
+.factor-ranking-header p {
+  margin: 8px 0 0;
+  color: #b8c5d6;
+}
+
+.factor-controls-grid {
+  background: linear-gradient(135deg, rgba(0, 24, 69, 0.95) 0%, rgba(0, 40, 85, 0.9) 100%);
+  border: 1px solid rgba(201, 169, 97, 0.3);
+  border-radius: 10px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.control-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.control-item span {
+  font-size: 12px;
+  color: #b8c5d6;
+}
+
+.control-item select,
+.control-item input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(201, 169, 97, 0.35);
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.control-item select option {
+  background: #002855;
+}
+
+.control-actions {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.quant-btn-primary,
+.quant-btn-secondary {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.quant-btn-primary {
+  background: linear-gradient(135deg, #0b6e4f 0%, #0e8761 100%);
+  color: #fff;
+}
+
+.quant-btn-secondary {
+  background: linear-gradient(135deg, #002855 0%, #003366 100%);
+  color: #fff;
+}
+
+.quant-btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.factor-column-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.factor-column-toggle > span {
+  font-size: 12px;
+  color: #b8c5d6;
+  padding-top: 6px;
+}
+
+.factor-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.factor-chip {
+  background: rgba(0, 40, 85, 0.5);
+  color: #dce5f0;
+  border: 1px solid rgba(201, 169, 97, 0.25);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.factor-chip.active {
+  background: rgba(11, 110, 79, 0.7);
+  border-color: rgba(11, 110, 79, 0.9);
+  color: #fff;
+}
+
+.factor-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.coverage-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.coverage-badge {
+  font-size: 12px;
+  background: rgba(201, 169, 97, 0.15);
+  border: 1px solid rgba(201, 169, 97, 0.35);
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.last-updated {
+  font-size: 12px;
+  color: #b8c5d6;
+}
+
+.quant-error {
+  margin-bottom: 10px;
+  background: rgba(183, 28, 28, 0.18);
+  border: 1px solid rgba(255, 120, 120, 0.7);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.factor-table-wrap {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(201, 169, 97, 0.25);
+}
+
+.factor-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1050px;
+  background: rgba(0, 24, 69, 0.55);
+}
+
+.factor-table th,
+.factor-table td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(184, 197, 214, 0.2);
+  font-size: 13px;
+}
+
+.factor-table th {
+  position: sticky;
+  top: 0;
+  background: rgba(0, 40, 85, 0.95);
+  z-index: 1;
+}
+
+.symbol-cell {
+  font-weight: 700;
+}
+
+.score-top {
+  color: #6cd39a;
+  font-weight: 700;
+}
+
+.score-bottom {
+  color: #ff8f8f;
+  font-weight: 700;
+}
+
+.missing-warning {
+  color: #ffd166;
+  font-weight: 700;
+}
+
+.skeleton-row td {
+  color: #9fb2c8;
+  font-style: italic;
+}
+
+.quant-error-boundary {
+  max-width: 820px;
+  margin: 24px auto;
+  padding: 20px;
+  border-radius: 10px;
+  background: rgba(183, 28, 28, 0.2);
+  border: 1px solid rgba(255, 120, 120, 0.7);
+}
+
+@media (max-width: 1024px) {
+  .factor-controls-grid {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .factor-ranking-page {
+    padding: 12px;
+  }
+
+  .factor-controls-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .control-actions {
+    width: 100%;
+  }
+
+  .quant-btn-primary,
+  .quant-btn-secondary {
+    width: 100%;
+  }
+
+  .factor-meta-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

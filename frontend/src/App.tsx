@@ -4,6 +4,7 @@ import Layout from "./components/Layout";
 import Error404 from "./pages/404";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import StockMetrics from "./pages/Stocks/StockMetrics/StockMetrics";
+import FactorRanking from "./pages/Quant/FactorRanking/FactorRanking";
 import Standings from "./pages/Standings/Standings";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { HomeRoute } from "./HomeRoute";
@@ -25,6 +26,7 @@ export default function App() {
 
               <Route element={<ProtectedRoute />}>
                 <Route path="stocks" element={<StockMetrics />} />
+                <Route path="quant" element={<FactorRanking />} />
               </Route>
 
               <Route path="*" element={<Error404 />} />

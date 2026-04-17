@@ -16,7 +16,7 @@ export const WatchlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const { session } = useAuth();
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchWatchlist = useCallback(async () => {
     if (!session?.user?.id) {

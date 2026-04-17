@@ -117,10 +117,10 @@ function StockMetricsContent() {
 
   // Refs for intervals and WebSocket
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
-  const fetchIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const marketStatusIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const fetchIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const marketStatusIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const MAX_RECONNECT_ATTEMPTS = 5;
   const RECONNECT_DELAY = 3000;

@@ -120,7 +120,7 @@ export default function Dashboard() {
   const { setCompetitionScore: setContextCompetitionScore } =
     useCompetitionScore();
   const navigate = useNavigate();
-  const priceIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const priceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isFetchingPricesRef = useRef(false);
   const hasInitializedRef = useRef(false);
   const lastKnownPricesRef = useRef<Map<string, number>>(new Map());
