@@ -1,10 +1,11 @@
-import random
-
+import numpy as np
+import pandas as pd
 import pytest
 
 
 @pytest.fixture
 def sample_fundamentals_full():
+    """Stock with all fields populated - no nulls."""
     return {
         "symbol": "AAPL",
         "name": "Apple",
@@ -33,6 +34,7 @@ def sample_fundamentals_full():
 
 @pytest.fixture
 def sample_fundamentals_sparse():
+    """Stock with many missing fields."""
     return {
         "symbol": "SMALL",
         "name": "Small Corp",
@@ -61,6 +63,7 @@ def sample_fundamentals_sparse():
 
 @pytest.fixture
 def sample_universe(sample_fundamentals_full, sample_fundamentals_sparse):
+    """Minimal universe: 5 stocks including edge cases."""
     stocks = [sample_fundamentals_full, sample_fundamentals_sparse]
     for i in range(3):
         stocks.append(
@@ -94,10 +97,8 @@ def sample_universe(sample_fundamentals_full, sample_fundamentals_sparse):
 
 @pytest.fixture
 def sample_price_history():
-    random.seed(42)
-    p = 100.0
-    prices = []
-    for _ in range(252):
-        p *= 1 + random.gauss(0.0003, 0.015)
-        prices.append(p)
-    return prices
+    """12 months of synthetic daily prices for momentum calculations."""
+    np.random.seed(42)
+    pd.date_range(end="2026-03-30", periods=252, freq="B")
+    prices = 100 * (1 + np.random.normal(0.0003, 0.015, 252)).cumprod()
+    return prices.tolist()
